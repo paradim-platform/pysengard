@@ -1,0 +1,3227 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Isengard API",
+    "version": "1.0.0",
+    "description": "Isengard REST API — the projects and albums you can see, the studies they hold, albums and sub-albums for your results, the copy of series between the albums of a project, the DICOMweb tokens and the members of your albums. Every call needs ``Authorization: Bearer <your-personal-token>`` (401 without it). An application that signs its users in with Isengard (OpenID Connect, ``/o/``) sends their access token instead, limited by its scopes: ``albums:read``, ``albums:write`` (albums, sub-albums, copies), ``album-tokens:write``, ``album-members:write``."
+  },
+  "paths": {
+    "/api/v1/projects/": {
+      "get": {
+        "operationId": "apps_api_v1_projects_list_projects",
+        "summary": "List visible projects",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedProjectOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the projects visible to the caller, ordered by name, each with the albums of it the caller sees.\n\nThe list is paginated with ``limit`` and ``offset``; ``count`` is the total number of visible projects.",
+        "tags": [
+          "Projects"
+        ],
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/": {
+      "get": {
+        "operationId": "apps_api_v1_projects_get_project",
+        "summary": "Project detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return a single project, provided it is visible to the caller, with the albums of it the caller sees.",
+        "tags": [
+          "Projects"
+        ],
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/albums/": {
+      "post": {
+        "operationId": "apps_api_v1_projects_create_project_album",
+        "summary": "Create an album",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Create a root album in the project, as the project page's \"New album\" button.\n\nRequires a token (an access token: with the ``albums:write`` scope) and to administer the project: one of its stewards,\nor a superuser. The caller becomes the steward of the album (a superuser who is not a steward of the project creates it\nwithout steward). A name already used in the project answers 409. To create a sub-album, see\n``POST /albums/{album_id}/sub-albums/``.",
+        "tags": [
+          "Projects"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlbumIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/albums/": {
+      "get": {
+        "operationId": "apps_api_v1_albums_list_albums",
+        "summary": "List visible albums",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "permission",
+            "schema": {
+              "items": {
+                "enum": [
+                  "is_admin",
+                  "can_upload",
+                  "can_download",
+                  "can_export",
+                  "can_remove",
+                  "can_manage_members",
+                  "can_create_token",
+                  "can_create_subalbum",
+                  "can_copy_data"
+                ],
+                "title": "Permission",
+                "type": "string"
+              },
+              "title": "Permission",
+              "type": "array"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "keyword",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Keyword"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedAlbumOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the albums visible to the caller, ordered by name.\n\n``project`` narrows the list to the albums of that project. ``permission``, repeatable, narrows it to the albums\nwhere the caller holds every permission given (e.g. ``?permission=can_upload&permission=can_create_token``).\n``keyword`` narrows it to the albums with that keyword, whatever its case.\nThe list is paginated with ``limit`` and ``offset``; ``count`` is the total number of visible albums.",
+        "tags": [
+          "Albums"
+        ],
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/albums/{album_id}/": {
+      "get": {
+        "operationId": "apps_api_v1_albums_get_album",
+        "summary": "Album detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "album_id",
+            "schema": {
+              "title": "Album Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the detail of a single album, provided it is visible to the caller.",
+        "tags": [
+          "Albums"
+        ],
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "apps_api_v1_albums_update_album_details",
+        "summary": "Change the details of an album",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "album_id",
+            "schema": {
+              "title": "Album Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Change the details of the album: those sent, the others kept, as the details form of its settings page.\n\nRequires a token (an access token: with the ``albums:write`` scope) and to administer the album: one of its stewards, a\nsteward of its project or a superuser. ``keywords`` replaces all the keywords. A name already used in the project\nanswers 409. A frozen album keeps the Snapshot category. The stewards and the members are not details: see\n``/albums/{album_id}/members/``.",
+        "tags": [
+          "Albums"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlbumPatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/albums/{album_id}/studies/": {
+      "get": {
+        "operationId": "apps_api_v1_albums_list_album_studies",
+        "summary": "List studies of an album",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "album_id",
+            "schema": {
+              "title": "Album Id",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "patient_id",
+            "schema": {
+              "default": "",
+              "title": "Patient Id",
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "patient_name",
+            "schema": {
+              "default": "",
+              "title": "Patient Name",
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "date_from",
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "date_to",
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "description",
+            "schema": {
+              "default": "",
+              "title": "Description",
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "modality",
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Modality",
+              "type": "array"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "own",
+            "schema": {
+              "default": false,
+              "title": "Own",
+              "type": "boolean"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumStudyPageOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the studies the album shows, with the filters of its page, ordered by patient ID, latest first.\n\n``patient_id`` and ``description`` match a part of the field; every word of ``patient_name`` must appear (``john doe``\nmatches ``DOE^JOHN``); ``date_from`` and ``date_to`` bound the study date; ``modality``, repeatable, keeps the studies\nwith a series of one of these modalities; ``own`` keeps a sub-album's own series, without those of its parent albums.\nEach study gives the modalities and the number of its series the album shows. The album must be visible to the caller.\nThe list is paginated with ``limit`` and ``offset``; ``count`` is the number of matching studies.",
+        "tags": [
+          "Albums"
+        ],
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/albums/{album_id}/series/": {
+      "get": {
+        "operationId": "apps_api_v1_albums_list_album_series",
+        "summary": "List series of an album",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "album_id",
+            "schema": {
+              "title": "Album Id",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "modality",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Modality"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedSeriesOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the series the album shows, ordered by UID: its own and, for a sub-album, those of its parent albums the caller sees.\n\n``modality`` narrows the list to the series of that modality (e.g. ``CT``).\n``inherited`` is true for a series shown from a parent album, that the album does not hold itself.\nThe album must be visible to the caller (public or the user is a member/steward).\nThe list is paginated with ``limit`` and ``offset``; ``count`` is the total number of series the album shows.",
+        "tags": [
+          "Albums"
+        ],
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/albums/{album_id}/studies/{study_uid}/series/": {
+      "get": {
+        "operationId": "apps_api_v1_albums_list_album_study_series",
+        "summary": "List series of a study of an album",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "album_id",
+            "schema": {
+              "title": "Album Id",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "study_uid",
+            "schema": {
+              "title": "Study Uid",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "own",
+            "schema": {
+              "default": false,
+              "title": "Own",
+              "type": "boolean"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SeriesOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the series of the study (by its StudyInstanceUID) that the album shows, ordered by modality, description and UID.\n\n``own`` keeps a sub-album's own series, without those of its parent albums, as the album page's filter. ``inherited``\nis true for a series shown from a parent album. The album must be visible to the caller, and show at least one series\nof the study: else 404.",
+        "tags": [
+          "Albums"
+        ],
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/albums/{album_id}/sub-albums/": {
+      "post": {
+        "operationId": "apps_api_v1_albums_create_album_sub_album",
+        "summary": "Create a sub-album",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "album_id",
+            "schema": {
+              "title": "Album Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Create a sub-album of the album, in its project, e.g. to receive the results of an algorithm run on the album's series.\n\nRequires a token (an access token: with the ``albums:write`` scope) and ``can_create_subalbum`` on the album, as the album page's \"New sub-album\" button. The\ncaller becomes the steward of the sub-album, which shows the series of its parent albums next to its own. A name\nalready used in the project answers 409: list the albums of the project to reuse it. Then create a token of the\nsub-album (``POST /albums/{album_id}/tokens/``) to store the results through DICOMweb STOW-RS.",
+        "tags": [
+          "Albums"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubAlbumIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/albums/{album_id}/copy/": {
+      "post": {
+        "operationId": "apps_api_v1_albums_copy_album_series",
+        "summary": "Copy series to another album of the project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "album_id",
+            "schema": {
+              "title": "Album Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesCopyOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Copy series the album shows into ``destination``, another album of the same project, as the album page's \"Copy\" button.\n\n``series`` lists their SeriesInstanceUIDs (``GET /albums/{album_id}/series/``), 1000 at most per call. Requires a token (an\naccess token: with the ``albums:write`` scope), ``can_copy_data`` on the album and ``can_upload`` on the destination, which\na frozen album never grants: ``GET /albums/?project={project_id}&permission=can_upload`` lists the possible destinations.\nA series the album does not show answers 404, and nothing is copied. A series the album inherits from a parent album\nalso requires ``can_copy_data`` on a parent album holding it: without it, it is left out (``not_permitted``). A series a\nparent album of the destination holds is already shown by the destination, and is not copied (``already_shown``).\nCopying again is harmless: what the destination holds is listed in ``already_held``.\n\nThe copy links the series to the destination in Isengard: nothing is copied in Orthanc, nor removed from the album.",
+        "tags": [
+          "Albums"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeriesCopyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/albums/{album_id}/duplicate/": {
+      "post": {
+        "operationId": "apps_api_v1_albums_duplicate_album_endpoint",
+        "summary": "Duplicate an album into a new album of its project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "album_id",
+            "schema": {
+              "title": "Album Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumDuplicateOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Duplicate the album into a new album of its project, as the album page's \"Duplicate\" button.\n\nRequires a token (an access token: with the ``albums:write`` scope) and to administer the project: one of its stewards,\nor a superuser; anyone else who sees the album gets 403. ``mode`` says what the copy holds:\n``album`` (the default) its own series (all of a root album; a sub-album's own data, without what it inherits);\n``merged`` a sub-album's series and those it inherits from its parent albums, in one root album;\n``lineage`` the same tree: a copy of each parent album, root first, then the copy of the sub-album under them, each\nholding the series of its original. ``merged`` and ``lineage`` on a root album answer 422.\n\nEach copy takes the description, keywords, licence, reference, contact and category of its original; ``category``\nchanges the copy's, and is required for a frozen album, whose copy is a live album. The rights are never copied: no\nmember, steward or token; every copy is private and the caller becomes its steward (a superuser who is not a member\nof the project creates it without steward). ``parent_names`` names the copies of the parent albums (by their\n``album_id``); the others are named \"<name> (copy)\". A name already used in the project answers 409, and nothing\nis created. The copies link the album's series in Isengard: nothing is copied in Orthanc.",
+        "tags": [
+          "Albums"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlbumDuplicateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/albums/{album_id}/tokens/": {
+      "get": {
+        "operationId": "apps_api_v1_tokens_list_tokens",
+        "summary": "List the album tokens",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "album_id",
+            "schema": {
+              "title": "Album Id",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "inactive",
+            "schema": {
+              "default": false,
+              "title": "Inactive",
+              "type": "boolean"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedListedAlbumTokenOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the DICOMweb tokens of the album, latest first, as its token page: the active ones, and with ``inactive``\nthe expired and revoked ones too. Never their value, which is not stored.\n\nRequires a token (an access token: with the ``album-tokens:write`` scope) and ``can_create_token`` on the album.\nThe list is paginated with ``limit`` and ``offset``.",
+        "tags": [
+          "Album tokens"
+        ],
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "apps_api_v1_tokens_create_token",
+        "summary": "Create an album token",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "album_id",
+            "schema": {
+              "title": "Album Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedAlbumTokenOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Create a DICOMweb token of the album and return it with its raw value, shown this once only.\n\nRequires a token (an access token: with the ``album-tokens:write`` scope) and ``can_create_token`` on the album.\nReading through a token of a sub-album also requires ``can_download`` on the parent albums the caller sees.",
+        "tags": [
+          "Album tokens"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlbumTokenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/albums/{album_id}/tokens/{token_id}/": {
+      "delete": {
+        "operationId": "apps_api_v1_tokens_revoke_token",
+        "summary": "Revoke an album token",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "album_id",
+            "schema": {
+              "title": "Album Id",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "token_id",
+            "schema": {
+              "title": "Token Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Revoke a DICOMweb token of the album: it stops authenticating at once. Revoking it again changes nothing.\n\nRequires a token (an access token: with the ``album-tokens:write`` scope) and ``can_create_token`` on the album,\nlike the album's token page.",
+        "tags": [
+          "Album tokens"
+        ],
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/albums/{album_id}/members/": {
+      "get": {
+        "operationId": "apps_api_v1_members_list_album_members",
+        "summary": "List the members of an album",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "album_id",
+            "schema": {
+              "title": "Album Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MemberOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the access table of the album: its stewards, who hold every permission, then its members with their\npermissions, then the group memberships kept from before groups were set aside.\n\nRequires ``can_manage_members`` on the album, as its settings page. The stewards of the project, who administer every\nalbum of it, are listed by the project's settings page.",
+        "tags": [
+          "Album members"
+        ],
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "apps_api_v1_members_add_album_member",
+        "summary": "Add a member to an album",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "album_id",
+            "schema": {
+              "title": "Album Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Make a user (by username or email address) a member of the album, with ``permissions``.\n\nRequires a token (an access token: with the ``album-members:write`` scope) and ``can_manage_members`` on the album. The\nuser must already be a member of the project, or of the parent album for a sub-album (422). Whoever does not\nadminister the album only grants the permissions they hold (403). A steward, or a member already, answers 409: change\na member's permissions with ``PATCH /albums/{album_id}/members/{user_id}/``. No one holds ``can_upload`` and\n``can_remove`` on a frozen album (422).",
+        "tags": [
+          "Album members"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/albums/{album_id}/members/{user_id}/": {
+      "patch": {
+        "operationId": "apps_api_v1_members_change_album_member_permissions",
+        "summary": "Grant and revoke permissions of a member",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "album_id",
+            "schema": {
+              "title": "Album Id",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Grant the permissions of ``grant`` and revoke those of ``revoke`` to a member of the album; the others are kept.\n\nRequires a token (an access token: with the ``album-members:write`` scope) and ``can_manage_members`` on the album.\nWhoever does not administer the album only grants or revokes the permissions they hold (403). A user who is not a\nmember answers 422, a steward 409: a steward holds every permission. A member without any permission left still sees\nthe album, until removed with ``DELETE /albums/{album_id}/members/{user_id}/``.",
+        "tags": [
+          "Album members"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberPermissionsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "apps_api_v1_members_remove_album_member",
+        "summary": "Remove a member from an album",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "album_id",
+            "schema": {
+              "title": "Album Id",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Remove a member from the album and from its sub-albums, as the trash of the album's settings page.\n\nRequires a token (an access token: with the ``album-members:write`` scope) and ``can_manage_members`` on the album,\nwhatever the permissions of the member. A user who is not a member answers 404, a steward 409: the stewards are\nchanged on the settings page. The member keeps what they see otherwise (a public album, the project's other albums);\nthe album tokens they created follow their access on every request.",
+        "tags": [
+          "Album members"
+        ],
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/album-tokens/self/": {
+      "delete": {
+        "operationId": "apps_api_v1_tokens_revoke_own_token",
+        "summary": "Revoke the album token of the call",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Revoke the album token sent in ``Authorization: Bearer <album token>``: its holder gives it up once done with it.\n\nNeeds no user's token: an application revokes the album token it was given (e.g. once the jobs that write with it\nhave ended). An already revoked or expired token answers 204 too; an unknown one, 401.",
+        "tags": [
+          "Album tokens"
+        ],
+        "security": [
+          {
+            "AlbumTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/studies/": {
+      "get": {
+        "operationId": "apps_api_v1_studies_search",
+        "summary": "Search studies",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "maxLength": 255,
+              "minLength": 2,
+              "title": "Q",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "modality",
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Modality",
+              "type": "array"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "date_from",
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "date_to",
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudySearchOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the studies of the albums the caller sees matching ``q``, at most ``limit``.\n\nEvery word of ``q`` must appear, case-insensitively, in the patient ID, the patient name, the study description or the\naccession number; ``^`` separates words like a space, so ``john doe`` matches ``DOE^JOHN``. Studies are ordered by\npatient ID, latest first. Each study lists its modalities and the albums the caller sees that hold one of its series.\n``modality``, repeatable, keeps the studies with a series of one of these modalities in an album the caller sees;\n``date_from`` and ``date_to`` bound the study date. ``has_more`` is true when more studies match: refine ``q`` rather\nthan paging.",
+        "tags": [
+          "Studies"
+        ],
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/me/": {
+      "get": {
+        "operationId": "apps_api_v1_me_get_me",
+        "summary": "The user of the token",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the user the token acts for, and the token: a personal token, or the access token of an application with its\nscopes. Projects and albums are listed by ``/projects/`` and ``/albums/``, with the caller's permissions as filters.",
+        "tags": [
+          "Me"
+        ],
+        "security": [
+          {
+            "UserTokenAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Input": {
+        "properties": {
+          "limit": {
+            "default": 100,
+            "maximum": 1000,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Offset",
+            "type": "integer"
+          }
+        },
+        "title": "Input",
+        "type": "object"
+      },
+      "PagedProjectOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "count"
+        ],
+        "title": "PagedProjectOut",
+        "type": "object"
+      },
+      "ProjectAlbumOut": {
+        "description": "An album as listed in its project; ``GET /albums/{album_id}/`` gives the whole of it.",
+        "properties": {
+          "album_id": {
+            "title": "Album Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "public": {
+            "title": "Public",
+            "type": "boolean"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "parent_album_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Album Id"
+          }
+        },
+        "required": [
+          "album_id",
+          "name",
+          "public",
+          "category",
+          "parent_album_id"
+        ],
+        "title": "ProjectAlbumOut",
+        "type": "object"
+      },
+      "ProjectOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "public": {
+            "title": "Public",
+            "type": "boolean"
+          },
+          "ethics_number": {
+            "title": "Ethics Number",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "last_activity_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Activity At"
+          },
+          "albums": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectAlbumOut"
+            },
+            "title": "Albums",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "public",
+          "ethics_number",
+          "created_at",
+          "updated_at",
+          "last_activity_at",
+          "albums"
+        ],
+        "title": "ProjectOut",
+        "type": "object"
+      },
+      "ErrorOut": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorOut",
+        "type": "object"
+      },
+      "AlbumOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "album_id": {
+            "title": "Album Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "public": {
+            "title": "Public",
+            "type": "boolean"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "integer"
+          },
+          "project_name": {
+            "title": "Project Name",
+            "type": "string"
+          },
+          "parent_album_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Album Id"
+          },
+          "study_count": {
+            "title": "Study Count",
+            "type": "integer"
+          },
+          "series_count": {
+            "title": "Series Count",
+            "type": "integer"
+          },
+          "keywords": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Keywords",
+            "type": "array"
+          },
+          "license": {
+            "title": "License",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "contact_email": {
+            "title": "Contact Email",
+            "type": "string"
+          },
+          "frozen_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frozen At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "last_ingestion_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Ingestion At"
+          }
+        },
+        "required": [
+          "id",
+          "album_id",
+          "name",
+          "description",
+          "public",
+          "category",
+          "project_id",
+          "project_name",
+          "parent_album_id",
+          "study_count",
+          "series_count",
+          "keywords",
+          "license",
+          "reference",
+          "contact_email",
+          "frozen_at",
+          "created_at",
+          "updated_at",
+          "last_ingestion_at"
+        ],
+        "title": "AlbumOut",
+        "type": "object"
+      },
+      "AlbumCategory": {
+        "enum": [
+          "acquisition",
+          "algorithm",
+          "human"
+        ],
+        "title": "AlbumCategory",
+        "type": "string"
+      },
+      "AlbumIn": {
+        "description": "A root album to create in a project: its name is unique in the project. The other details are optional.",
+        "properties": {
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/AlbumCategory"
+          },
+          "keywords": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Keywords",
+            "type": "array"
+          },
+          "license": {
+            "default": "",
+            "maxLength": 500,
+            "title": "License",
+            "type": "string"
+          },
+          "reference": {
+            "default": "",
+            "maxLength": 255,
+            "title": "Reference",
+            "type": "string"
+          },
+          "contact_email": {
+            "default": "",
+            "maxLength": 254,
+            "title": "Contact Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "category"
+        ],
+        "title": "AlbumIn",
+        "type": "object"
+      },
+      "Permission": {
+        "enum": [
+          "is_admin",
+          "can_upload",
+          "can_download",
+          "can_export",
+          "can_remove",
+          "can_manage_members",
+          "can_create_token",
+          "can_create_subalbum",
+          "can_copy_data"
+        ],
+        "title": "Permission",
+        "type": "string"
+      },
+      "PagedAlbumOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AlbumOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "count"
+        ],
+        "title": "PagedAlbumOut",
+        "type": "object"
+      },
+      "AlbumPatchIn": {
+        "description": "The details of an album to change: the fields left out are kept. ``keywords`` replaces all of them.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AlbumCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keywords": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keywords"
+          },
+          "license": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
+          "contact_email": {
+            "anyOf": [
+              {
+                "maxLength": 254,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Email"
+          }
+        },
+        "title": "AlbumPatchIn",
+        "type": "object"
+      },
+      "AlbumStudyOut": {
+        "properties": {
+          "orthanc_id": {
+            "title": "Orthanc Id",
+            "type": "string"
+          },
+          "uid": {
+            "title": "Uid",
+            "type": "string"
+          },
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "patient_name": {
+            "title": "Patient Name",
+            "type": "string"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "accession_number": {
+            "title": "Accession Number",
+            "type": "string"
+          },
+          "modalities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Modalities",
+            "type": "array"
+          },
+          "series_count": {
+            "title": "Series Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "orthanc_id",
+          "uid",
+          "patient_id",
+          "patient_name",
+          "date",
+          "description",
+          "accession_number",
+          "modalities",
+          "series_count"
+        ],
+        "title": "AlbumStudyOut",
+        "type": "object"
+      },
+      "AlbumStudyPageOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AlbumStudyOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "count"
+        ],
+        "title": "AlbumStudyPageOut",
+        "type": "object"
+      },
+      "PagedSeriesOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SeriesOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "count"
+        ],
+        "title": "PagedSeriesOut",
+        "type": "object"
+      },
+      "SeriesOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "orthanc_id": {
+            "title": "Orthanc Id",
+            "type": "string"
+          },
+          "uid": {
+            "title": "Uid",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "modality": {
+            "title": "Modality",
+            "type": "string"
+          },
+          "study_id": {
+            "title": "Study Id",
+            "type": "integer"
+          },
+          "study_uid": {
+            "title": "Study Uid",
+            "type": "string"
+          },
+          "study_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Study Date"
+          },
+          "inherited": {
+            "title": "Inherited",
+            "type": "boolean"
+          },
+          "instance_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instance Count"
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Bytes"
+          },
+          "counters_synced_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counters Synced At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "orthanc_id",
+          "uid",
+          "description",
+          "modality",
+          "study_id",
+          "study_uid",
+          "study_date",
+          "inherited",
+          "instance_count",
+          "size_bytes",
+          "counters_synced_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SeriesOut",
+        "type": "object"
+      },
+      "SubAlbumIn": {
+        "description": "A sub-album to create: its name is unique in the project.",
+        "properties": {
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/AlbumCategory"
+          }
+        },
+        "required": [
+          "name",
+          "category"
+        ],
+        "title": "SubAlbumIn",
+        "type": "object"
+      },
+      "SeriesCopyOut": {
+        "description": "What the copy did with each requested series (SeriesInstanceUIDs, ordered).",
+        "properties": {
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "destination": {
+            "title": "Destination",
+            "type": "string"
+          },
+          "copied": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Copied",
+            "type": "array"
+          },
+          "already_held": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Already Held",
+            "type": "array"
+          },
+          "already_shown": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Already Shown",
+            "type": "array"
+          },
+          "not_permitted": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Not Permitted",
+            "type": "array"
+          }
+        },
+        "required": [
+          "source",
+          "destination",
+          "copied",
+          "already_held",
+          "already_shown",
+          "not_permitted"
+        ],
+        "title": "SeriesCopyOut",
+        "type": "object"
+      },
+      "SeriesCopyIn": {
+        "description": "Series of the album to copy into another album of its project, by SeriesInstanceUID.",
+        "properties": {
+          "destination": {
+            "maxLength": 8,
+            "minLength": 1,
+            "title": "Destination",
+            "type": "string"
+          },
+          "series": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Series",
+            "type": "array"
+          }
+        },
+        "required": [
+          "destination",
+          "series"
+        ],
+        "title": "SeriesCopyIn",
+        "type": "object"
+      },
+      "AlbumDuplicateOut": {
+        "description": "The albums a duplication created.",
+        "properties": {
+          "album": {
+            "$ref": "#/components/schemas/AlbumOut"
+          },
+          "parents": {
+            "items": {
+              "$ref": "#/components/schemas/AlbumOut"
+            },
+            "title": "Parents",
+            "type": "array"
+          },
+          "series_count": {
+            "title": "Series Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "album",
+          "parents",
+          "series_count"
+        ],
+        "title": "AlbumDuplicateOut",
+        "type": "object"
+      },
+      "AlbumDuplicateIn": {
+        "description": "How to duplicate an album into a new album of its project, and the name of its copy, unique in the project.",
+        "properties": {
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DuplicationMode"
+              }
+            ],
+            "default": "album"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AlbumCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parent_names": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 23,
+            "title": "Parent Names",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "AlbumDuplicateIn",
+        "type": "object"
+      },
+      "DuplicationMode": {
+        "enum": [
+          "album",
+          "merged",
+          "lineage"
+        ],
+        "title": "DuplicationMode",
+        "type": "string"
+      },
+      "ListedAlbumTokenOut": {
+        "description": "A token of the album, as its token page lists it: never its value, which is not stored.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "can_read": {
+            "title": "Can Read",
+            "type": "boolean"
+          },
+          "can_write": {
+            "title": "Can Write",
+            "type": "boolean"
+          },
+          "expiration_date": {
+            "format": "date-time",
+            "title": "Expiration Date",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "last_used": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "issued_via": {
+            "title": "Issued Via",
+            "type": "string"
+          },
+          "study_uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Study Uid"
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "can_read",
+          "can_write",
+          "expiration_date",
+          "created_at",
+          "state",
+          "last_used",
+          "created_by",
+          "issued_via",
+          "study_uid"
+        ],
+        "title": "ListedAlbumTokenOut",
+        "type": "object"
+      },
+      "PagedListedAlbumTokenOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ListedAlbumTokenOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "count"
+        ],
+        "title": "PagedListedAlbumTokenOut",
+        "type": "object"
+      },
+      "CreatedAlbumTokenOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "can_read": {
+            "title": "Can Read",
+            "type": "boolean"
+          },
+          "can_write": {
+            "title": "Can Write",
+            "type": "boolean"
+          },
+          "expiration_date": {
+            "format": "date-time",
+            "title": "Expiration Date",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "can_read",
+          "can_write",
+          "expiration_date",
+          "created_at",
+          "token"
+        ],
+        "title": "CreatedAlbumTokenOut",
+        "type": "object"
+      },
+      "AlbumTokenIn": {
+        "description": "A DICOMweb token of the album, with at least one of ``can_read`` and ``can_write``.",
+        "properties": {
+          "description": {
+            "maxLength": 255,
+            "title": "Description",
+            "type": "string"
+          },
+          "can_read": {
+            "default": false,
+            "title": "Can Read",
+            "type": "boolean"
+          },
+          "can_write": {
+            "default": false,
+            "title": "Can Write",
+            "type": "boolean"
+          },
+          "expiration_date": {
+            "format": "date-time",
+            "title": "Expiration Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "description",
+          "expiration_date"
+        ],
+        "title": "AlbumTokenIn",
+        "type": "object"
+      },
+      "MemberOut": {
+        "description": "A row of the album's access table: a steward, a member, or a group membership kept from before groups were set aside.",
+        "properties": {
+          "user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group"
+          },
+          "steward": {
+            "title": "Steward",
+            "type": "boolean"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Permissions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "user",
+          "group",
+          "steward",
+          "permissions"
+        ],
+        "title": "MemberOut",
+        "type": "object"
+      },
+      "UserOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "email",
+          "full_name"
+        ],
+        "title": "UserOut",
+        "type": "object"
+      },
+      "GrantablePermission": {
+        "enum": [
+          "can_upload",
+          "can_download",
+          "can_export",
+          "can_remove",
+          "can_manage_members",
+          "can_create_token",
+          "can_create_subalbum",
+          "can_copy_data"
+        ],
+        "title": "GrantablePermission",
+        "type": "string"
+      },
+      "MemberIn": {
+        "description": "A new member of the album: a member of the project, or of the parent album for a sub-album.",
+        "properties": {
+          "user": {
+            "maxLength": 254,
+            "minLength": 1,
+            "title": "User",
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "$ref": "#/components/schemas/GrantablePermission"
+            },
+            "title": "Permissions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "user"
+        ],
+        "title": "MemberIn",
+        "type": "object"
+      },
+      "MemberPermissionsIn": {
+        "description": "Permissions of a member to grant and to revoke; the others are kept.",
+        "properties": {
+          "grant": {
+            "items": {
+              "$ref": "#/components/schemas/GrantablePermission"
+            },
+            "title": "Grant",
+            "type": "array"
+          },
+          "revoke": {
+            "items": {
+              "$ref": "#/components/schemas/GrantablePermission"
+            },
+            "title": "Revoke",
+            "type": "array"
+          }
+        },
+        "title": "MemberPermissionsIn",
+        "type": "object"
+      },
+      "StudyAlbumOut": {
+        "description": "An album the caller sees that holds a series of the study.",
+        "properties": {
+          "album_id": {
+            "title": "Album Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "integer"
+          },
+          "project_name": {
+            "title": "Project Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "album_id",
+          "name",
+          "project_id",
+          "project_name"
+        ],
+        "title": "StudyAlbumOut",
+        "type": "object"
+      },
+      "StudyHitOut": {
+        "properties": {
+          "orthanc_id": {
+            "title": "Orthanc Id",
+            "type": "string"
+          },
+          "uid": {
+            "title": "Uid",
+            "type": "string"
+          },
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "patient_name": {
+            "title": "Patient Name",
+            "type": "string"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "accession_number": {
+            "title": "Accession Number",
+            "type": "string"
+          },
+          "modalities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Modalities",
+            "type": "array"
+          },
+          "albums": {
+            "items": {
+              "$ref": "#/components/schemas/StudyAlbumOut"
+            },
+            "title": "Albums",
+            "type": "array"
+          }
+        },
+        "required": [
+          "orthanc_id",
+          "uid",
+          "patient_id",
+          "patient_name",
+          "date",
+          "description",
+          "accession_number",
+          "modalities",
+          "albums"
+        ],
+        "title": "StudyHitOut",
+        "type": "object"
+      },
+      "StudySearchOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StudyHitOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "has_more"
+        ],
+        "title": "StudySearchOut",
+        "type": "object"
+      },
+      "MeOut": {
+        "description": "The user of the token, and the token.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "is_superuser": {
+            "title": "Is Superuser",
+            "type": "boolean"
+          },
+          "token": {
+            "$ref": "#/components/schemas/TokenInfoOut"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "email",
+          "first_name",
+          "last_name",
+          "is_superuser",
+          "token"
+        ],
+        "title": "MeOut",
+        "type": "object"
+      },
+      "TokenInfoOut": {
+        "description": "The token of the call.",
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "scopes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scopes"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "scopes",
+          "expires_at"
+        ],
+        "title": "TokenInfoOut",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "UserTokenAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "AlbumTokenAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "servers": []
+}

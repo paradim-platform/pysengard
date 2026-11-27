@@ -1,0 +1,109 @@
+name: Publish to PyPI
+
+# Déclenché par le push d'un tag SemVer, ex. : 1.2.3, 1.2.3-rc.1
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+-*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Check tag is strict SemVer
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          SEMVER='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?$'
+          if ! [[ "$TAG" =~ $SEMVER ]]; then
+            echo "::error::Le tag '$TAG' ne respecte pas SemVer (attendu : MAJOR.MINOR.PATCH[-prerelease])"
+            exit 1
+          fi
+          echo "version=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Check tagged commit is on main
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Le commit tagué ($GITHUB_SHA) n'appartient pas à la branche main"
+            exit 1
+          fi
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Check tag matches package version
+        env:
+          TAG_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          PKG_VERSION=$(sed -nE "s/^__version__ = ['\"]([^'\"]+)['\"]/\1/p" src/pysengard/_version.py)
+          # Comparaison après normalisation PEP 440 (1.0.0-rc.1 == 1.0.0rc1)
+          uvx --from packaging python -c "
+          import sys
+          from packaging.version import Version
+          tag, pkg = Version('$TAG_VERSION'), Version('$PKG_VERSION')
+          if tag != pkg:
+              sys.exit(f'::error::Le tag ({tag}) ne correspond pas à __version__ ({pkg}) dans src/pysengard/_version.py')
+          print(f'Version OK : {pkg}')
+          "
+
+  test:
+    name: Lint & tests
+    needs: validate
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest
+
+  build:
+    name: Build distributions
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - run: uv build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    needs: [validate, build]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/pysengard/${{ needs.validate.outputs.version }}/
+    permissions:
+      id-token: write # Trusted Publishing (OIDC), aucun token PyPI à stocker
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
